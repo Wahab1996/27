@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#685ff4">
+  <title>مصروفي AI — تحليل كشف الحساب</title>
+  <link rel="stylesheet" href="styles.css?v=0.3.1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand"><div class="logo">م</div><div><h1>مصروفي AI</h1><p>تحليل ذكي ودقيق لكشف الحساب</p></div></div>
+    <div class="actions">
+      <button class="btn" id="themeBtn">◐ الوضع</button>
+      <button class="btn hidden" id="printBtn">⎙ PDF</button>
+      <button class="btn hidden" id="csvBtn">CSV</button>
+      <button class="btn hidden" id="jsonBtn">JSON</button>
+      <button class="btn danger" id="deleteBtn">حذف بيانات الجلسة</button>
+    </div>
+  </header>
+
+  <section class="panel uploadHero" id="uploadView">
+    <div class="uploadInner">
+      <h2>حلّل كشف حسابك</h2>
+      <p>ارفع كشف الحساب، وسنحوّله إلى تقرير مالي واضح: كل عملية، كل فئة، أين ذهب المال، وما الذي استنزف الرصيد.</p>
+      <div class="dropzone" id="dropzone">
+        <div class="dropIcon">↥</div>
+        <h3>اسحب كشف الحساب هنا</h3>
+        <p>PDF · CSV · XLSX · JPG · PNG</p>
+        <input type="file" id="fileInput" accept=".pdf,.csv,.xlsx,.xls,.jpg,.jpeg,.png,.webp" hidden>
+        <button class="btn primary" id="chooseBtn">اختيار ملف</button>
+        <button class="btn" id="demoBtn" style="margin-inline-start:6px">عرض نموذج تجريبي</button>
+        <div class="filechip" id="fileChip"></div>
+      </div>
+      <div class="apiKeyBox">
+        <div class="apiKeyHead">
+          <div>
+            <b>مفتاح OpenAI API</b>
+            <span>أدخله عند كل تحليل. لا يُحفظ في الصفحة أو المتصفح أو GitHub.</span>
+          </div>
+          <button class="keyToggle" id="keyToggle" type="button" aria-label="إظهار أو إخفاء المفتاح">إظهار</button>
+        </div>
+        <input type="password" id="apiKeyInput" class="apiKeyInput" placeholder="sk-..." autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="keyHint">يُستخدم المفتاح مؤقتًا في هذه الصفحة ويُرسل مباشرةً من متصفحك إلى OpenAI API أثناء التحليل فقط، ثم يُزال من ذاكرة الصفحة. لا يحتاج المشروع إلى Vercel أو Backend.</div>
+      </div>
+      <label style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:14px;font-size:12px;color:var(--muted)"><input type="checkbox" id="webLookup" checked> التحقق من أسماء التجار الغامضة عبر بحث ويب للذكاء الاصطناعي</label>
+      <div class="progressWrap" id="progressWrap">
+        <div class="steps">
+          <div class="step" data-step="read">قراءة الكشف</div><div class="step" data-step="extract">استخراج العمليات</div><div class="step" data-step="validate">التحقق الحسابي</div><div class="step" data-step="classify">تصنيف التجار</div><div class="step" data-step="review">مراجعة الغامض</div><div class="step" data-step="build">بناء التقرير</div>
+        </div>
+        <div class="statusline" id="statusline"></div>
+      </div>
+      <div class="error" id="errorBox"></div>
+      <div class="privacy"><span>🔒 المفتاح مؤقت لكل تحليل ولا يتم حفظه</span><span>◉ الحسابات تتم برمجيًا لا بواسطة الذكاء الاصطناعي</span><span>⌫ حذف بيانات الجلسة بضغطة واحدة</span></div>
+    </div>
+  </section>
+
+  <main class="dashboard" id="dashboard">
+    <div class="reviewBanner panel" id="reviewBanner"></div>
+    <div class="grid">
+      <section class="panel kpi"><div class="klabel">الرصيد الافتتاحي</div><div class="kvalue" id="openingKpi">—</div><div class="kfoot">ر.س</div></section>
+      <section class="panel kpi"><div class="klabel">الإيداعات</div><div class="kvalue green" id="depositKpi">—</div><div class="kfoot" id="depositCount">—</div></section>
+      <section class="panel kpi"><div class="klabel">السحوبات</div><div class="kvalue red" id="withdrawKpi">—</div><div class="kfoot" id="withdrawCount">—</div></section>
+      <section class="panel kpi"><div class="klabel">الرصيد النهائي</div><div class="kvalue" id="closingKpi">—</div><div class="kfoot" id="periodKpi">—</div></section>
+
+      <section class="panel full hero"><div class="heroGrid"><div><div class="muted">أكبر ضغط على السيولة</div><div class="heroBig" id="majorAmount">—</div><div id="majorPct">—</div></div><div id="majorBreakdown"></div></div></section>
+
+      <section class="panel half"><div class="sectionTitle">توزيع المصروفات</div><div class="ringWrap"><div class="ringBox"><div class="ring" id="ring"></div><div class="ringCenter"><div><b id="ringTotal">—</b><br><span>إجمالي السحوبات</span></div></div></div><div class="legend" id="legend"></div></div></section>
+      <section class="panel half"><div class="sectionTitle">الفئات — من الأكبر للأصغر</div><div class="bars" id="bars"></div></section>
+
+      <section class="panel full"><div class="sectionTitle">التحقق الحسابي</div><div class="recon" id="reconBox">—</div></section>
+      <section class="panel full"><div class="sectionTitle">الصرف اليومي</div><div class="chartBox"><svg id="dailyChart" viewBox="0 0 1120 260" preserveAspectRatio="none"></svg></div></section>
+
+      <section class="panel half"><div class="sectionTitle">تفصيل الفئات الرئيسية</div><div class="tableWrap"><table><thead><tr><th>الفئة</th><th>الإجمالي</th><th>% من السحب</th><th>عدد العمليات</th></tr></thead><tbody id="catTable"></tbody></table></div></section>
+      <section class="panel half"><div class="sectionTitle">تفصيل الفئات الفرعية</div><div class="tableWrap"><table><thead><tr><th>الفئة</th><th>التفصيل</th><th>الإجمالي</th><th>العدد</th></tr></thead><tbody id="subTable"></tbody></table></div></section>
+
+      <section class="panel full"><div class="sectionTitle">تفصيل كل فئة — بدون اختصار</div><div class="categoryDetails" id="categoryDetails"></div></section>
+
+      <section class="panel half"><div class="sectionTitle">أعلى الجهات حسب الصرف</div><div class="tableWrap"><table><thead><tr><th>الجهة</th><th>الإجمالي</th><th>العدد</th><th>%</th></tr></thead><tbody id="merchantTable"></tbody></table></div></section>
+      <section class="panel half"><div class="sectionTitle">غير المصنف فعليًا</div><div id="coverageBox" class="recon"></div><div class="tableWrap" style="margin-top:12px"><table><thead><tr><th>التاريخ</th><th>الجهة</th><th>المبلغ</th><th>السبب</th></tr></thead><tbody id="unknownTable"></tbody></table></div></section>
+
+      <section class="panel full"><div class="sectionTitle">تحليل الذكاء الاصطناعي</div><div class="insights" id="insights"></div></section>
+
+      <section class="panel full"><div class="sectionTitle">جميع العمليات</div><div class="tools"><input id="searchTx" placeholder="ابحث باسم التاجر أو الفئة..."><select id="filterCat"><option value="">كل الفئات</option></select><select id="filterType"><option value="">الكل</option><option value="debit">مصروفات فقط</option><option value="credit">إيداعات فقط</option></select><select id="filterConfidence"><option value="">كل درجات الثقة</option><option>CONFIRMED</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>UNRESOLVED</option></select></div><div class="tableWrap"><table><thead><tr><th>#</th><th>التاريخ</th><th>الوقت</th><th>الجهة</th><th>الفئة</th><th>التفصيل</th><th>المبلغ</th><th>الرصيد</th><th>الثقة</th></tr></thead><tbody id="allTx"></tbody></table></div></section>
+    </div>
+  </main>
+  <div class="footer">الأرقام تُحسب محليًا من العمليات المستخرجة. الذكاء الاصطناعي مسؤول عن الاستخراج والتصنيف والتفسير فقط.</div>
+</div>
+<script src="app.js?v=0.3.1"></script>
+</body>
+</html>
